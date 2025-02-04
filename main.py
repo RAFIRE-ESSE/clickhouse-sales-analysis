@@ -98,11 +98,11 @@ def data_cleaner(data):
                 data[i[0]] = data[i[0]].fillna(0)
         return data       
 
-#house = clickhouse()
+house = clickhouse()
 #data['ID'] = data['unique_id']
 #house.table_creater(data.drop(columns=['unique_id']), 'Sales')
 
-data = data_cleaner(pandas.read_csv('sales_train.csv')) #house.table_reader('Sales')
+data = house.table_reader('Sales')  #data = data_cleaner(pandas.read_csv('sales_train.csv'))
 
 data['date_1'] = data['date'].astype('datetime64[ns]')
 data['date'] = data['date_1'].dt.strftime('%Y.%m%d').astype('float64')
