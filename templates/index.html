@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+	<body>
+		{% for i,j in itrater %}
+			<div style="padding: 10px;">
+	        	<div style="padding: 10px; box-shadow: 0 5px 15px 3px rgba(0, 0, 0, 0.3); border-radius: 10px;">
+					<canvas id={{j}} style="width:100%;max-width:99%;"></canvas>
+				</div>
+			</div>
+		
+			<script>
+				var plot =JSON.parse({{ plot[i] | tojson }});
+				var xValues =  plot[0];
+				var yValues =  plot[1];
+
+				new Chart({{j}}, {
+					type: "bar",
+					data: {
+						labels: xValues,
+						datasets: [{
+						    backgroundColor: 'black',
+						    data: yValues
+						    }]
+						},
+					options: {
+						legend: {display: false},
+						title: {
+						    display: true,
+						    text: '{{i.upper()}}'
+						}
+					}
+				});
+			</script>
+			
+        {% endfor %}
+        <div style="display: block;">
+
+			{% for i,j in itrater_1 %}
+				<div style="padding: 10px; display: inline-block;">
+		        	<div style="padding: 10px; box-shadow: 0 5px 15px 3px rgba(0, 0, 0, 0.3); border-radius: 10px; width: 900px;">
+						<canvas id={{j}} style="width:100%;"></canvas>
+					</div>
+				</div>
+				<script>
+					var plot =JSON.parse({{ plot_1[i] | tojson }});
+					var xValues =  plot[0];
+					var yValues =  plot[1];
+
+					new Chart({{j}}, {
+						type: "bar",
+						data: {
+							labels: xValues,
+							datasets: [{
+							  	backgroundColor: 'black',
+							    data: yValues
+							      
+							}]
+						},
+						options: {
+							legend: {display: false},
+							title: {
+							    display: true,
+							    text: '{{i.upper()}}'
+							}
+						}
+					});
+				</script>
+	        {% endfor %}
+
+	    </div>
+	    <div style="display: block;">
+
+			{% for i,j in itrater_2 %}
+				<div style="padding: 10px; display: inline-block;">
+		        	<div style="padding: 10px; box-shadow: 0 5px 15px 3px rgba(0, 0, 0, 0.3); border-radius: 10px; width: 900px;">
+						<canvas id={{j}} style="width:100%;"></canvas>
+					</div>
+				</div>
+				<script>
+					var plot =JSON.parse({{ plot_2[i] | tojson }});
+					var xValues =  plot[0];
+					var yValues =  plot[1];
+
+					new Chart({{j}}, {
+						type: "bar",
+						data: {
+							labels: xValues,
+							datasets: [{
+							  	backgroundColor: 'gray',
+							    data: yValues
+							      
+							}]
+						},
+						options: {
+							legend: {display: false},
+							title: {
+							    display: true,
+							    text: '{{i.upper()}}'
+							}
+						}
+					});
+				</script>
+	        {% endfor %}
+
+	    </div>
+		
+	</body>
+</html>
