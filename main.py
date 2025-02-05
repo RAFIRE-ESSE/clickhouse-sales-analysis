@@ -38,9 +38,11 @@ class clickhouse:
 
     def table_reader(self, column_name, database_name = 'Sales'):
         train = {} 
-        train = self.client.command(f'SELECT top 100000 {column_name} FROM {database_name}').split('\n')
-        if train[0].isdigit():
+        train = self.client.command(f'SELECT top 10000 {column_name} FROM {database_name}').split('\n')
+        if train[0].isdigit() or '.' in train[0]:
             train = [float(i) if i!='nan' else 0 for i in train ]
+        if column_name=='sales':
+            print(train)
 
         return train 
 
@@ -70,7 +72,6 @@ class data_ploter:
                 
             elif len(labels)==2:     
                 label = data_ploter.two_label_extracter(self, labels[0],labels[1])  
-                print(label)    
                 return json.dumps([list(label.keys()), list(label.values())])
             
     def label_extracter(self, label):
