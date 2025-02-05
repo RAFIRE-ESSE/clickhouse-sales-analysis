@@ -2,8 +2,7 @@ from flask import Flask, render_template, request,send_file
 import warnings
 
 import numpy
-import json
-import pandas 
+import json 
 import clickhouse_connect
 import matplotlib.pyplot as plt
 
@@ -37,17 +36,21 @@ class clickhouse:
         self.client.command(f'CREATE TABLE {database_name} ({columns}) Engine MergeTree ORDER BY ID')
         self.client.insert(database_name, data.to_numpy(), column_names=list(data.columns))
 
-    def table_reader(self, database_name):
-        train, columns = {}, [i for i in self.client.command(f'DESC {database_name}') if i!='' and i!='String' and i!='Float64']
-        columns = [columns[0]]+[i.split('\n')[1] for i in columns[1:]]
-        for i in columns:
-            train[i] = numpy.array(self.client.command(f'SELECT top 10000 {i} FROM {database_name}').split('\n'))
-        return pandas.DataFrame(train, columns = columns)
+    def table_reader(self, column_name, database_name = 'Sales'):
+        train = {} 
+        train = self.client.command(f'SELECT top 100000 {column_name} FROM {database_name}').split('\n')
+        if train[0].isdigit():
+            train = [float(i) if i!='nan' else 0 for i in train ]
+
+        return train 
 
 class data_ploter:
     def __new__(self, labels, type_):
         plt.figure(figsize=(12, 7))
         
+        self.data = {}
+        for i in labels:
+            self.data[i] = house.table_reader(i) 
         if type_=='single_label_plot':
             label = data_ploter.label_extracter(self, labels[0])
             return json.dumps([list(label.keys()), list(label.values())])
@@ -63,15 +66,16 @@ class data_ploter:
         elif type_=='normal_plot': 
             if len(labels)==1:
                 plt.title(f'{labels[0]}')
-                plt.plot(data[labels[0]].to_numpy())
+                plt.plot(self.data[labels[0]].to_numpy())
                 
             elif len(labels)==2:     
-                label = data_ploter.two_label_extracter(self, labels[0],labels[1])      
+                label = data_ploter.two_label_extracter(self, labels[0],labels[1])  
+                print(label)    
                 return json.dumps([list(label.keys()), list(label.values())])
             
     def label_extracter(self, label):
         label_count = {}
-        for i in data[label]:
+        for i in self.data[label]:
             if i not in label_count.keys():
                 label_count[i]=1
             else:
@@ -80,7 +84,7 @@ class data_ploter:
         
     def two_label_extracter(self, label_1, label_2):
         label_count = {}
-        for i in zip(data[label_1],data[label_2]):
+        for i in zip(self.data[label_1],self.data[label_2]):
             if i[0] not in label_count.keys():
                 label_count[i[0]]=i[1]
             else:
@@ -99,20 +103,6 @@ def data_cleaner(data):
         return data       
 
 house = clickhouse()
-#data['ID'] = data['unique_id']
-#house.table_creater(data.drop(columns=['unique_id']), 'Sales')
-
-data = house.table_reader('Sales')  #data = data_cleaner(pandas.read_csv('sales_train.csv'))
-
-data['date_1'] = data['date'].astype('datetime64[ns]')
-data['date'] = data['date_1'].dt.strftime('%Y.%m%d').astype('float64')
-
-#['date'] = data['date_1'].dt.strftime('%Y.%m').astype('float64')
-
-data["day"] = data['date_1'].dt.day
-data["month"] = data['date_1'].dt.month
-data["year"] = data['date_1'].dt.year
-
 main=Flask(__name__)
 
 main.jinja_env.filters['zip'] = zip
@@ -120,6 +110,7 @@ main.jinja_env.filters['zip'] = zip
 @main.route("/",methods=['POST','GET'])
 def main_div():
     plot = {'total_orders per date' : data_ploter(['date', 'total_orders'], 'normal_plot')}
+
     plot_1 = {'sales per date' : data_ploter(['date', 'sales'], 'normal_plot'),
               'type_1_discount per date' : data_ploter(['date', 'type_1_discount'], 'normal_plot'),
               'type_2_discount per date' : data_ploter(['date', 'type_2_discount'], 'normal_plot'),
@@ -129,8 +120,7 @@ def main_div():
               'type_6_discount per date' : data_ploter(['date', 'type_6_discount'], 'normal_plot'),
               'availability as per date' : data_ploter(['date', 'availability'], 'double_label_plot')}
 
-    plot_2 = {         
-              'warehouse usage' : data_ploter(['warehouse'], 'single_label_plot'),
+    plot_2 = {'warehouse usage' : data_ploter(['warehouse'], 'single_label_plot'),
               'type_1_discount as per warehouse' : data_ploter(['warehouse', 'type_1_discount'], 'double_label_plot'),
               'type_2_discount as per warehouse' : data_ploter(['warehouse', 'type_2_discount'], 'double_label_plot'),
               'type_3_discount as per warehouse' : data_ploter(['warehouse', 'type_3_discount'], 'double_label_plot'),
@@ -144,4 +134,4 @@ def main_div():
                                          plot_2 = plot_2, itrater_2 = zip(plot_2.keys(),['char_'+str(i) for i in range(len(plot_2.keys()))]))
 
 if __name__ == '__main__':
-    main.run(host="2409:408d:eb9:9fa0:c8e7:473b:d1c5:81ea",debug=True)
+    main.run(debug=True) #host="2409:408d:eb9:9fa0:c8e7:473b:d1c5:81ea"
