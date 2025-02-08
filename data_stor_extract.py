@@ -29,22 +29,45 @@ class clickhouse:
         self.client.insert(database_name, data.to_numpy(), column_names=list(data.columns))
         clickhouse.null_values_remover(self, database_name)
 
-    def column_reader(self, column_name, database_name = 'Sales'):
-        train = {} 
-        train = self.client.command(f'SELECT top 100 {column_name} FROM {database_name}').split('\n')
-        if train[0].isdigit() or '.' in train[0]:
-            train = [float(i) if i!='nan' else 0 for i in train ]
-
-        return train
-    def view_tabels(self):
-        return self.client.command(f'SHOW TABLES;').split('\n')
-
     def data_reconstructer(self, tabels):
         columns_, joint_, data_ = '', '', []
         for i in tabels:
             columns_ += f'{i}.{i}, '
         for i in tabels[1:]:
             joint_ += f'FULL OUTER JOIN {i} ON {tabels[0]}.ID = {i}.ID '
+        data = self.client.command(f'SELECT {tabels[0]}.ID, {columns_} FROM {tabels[0]} {joint_};')
+        [data_.append(i) if '\n' not in i else [data_.append(i) for i in i.split('\n')] for i in data]
+
+        return numpy.array(data_).reshape(int(len(data_)/(len(tabels)+1)), len(tabels)+1)
+
+    def data_reconstructer_right(self, tabels):
+        columns_, joint_, data_ = '', '', []
+        for i in tabels:
+            columns_ += f'{i}.{i}, '
+        for i in tabels[1:]:
+            joint_ += f'RIGHT JOIN {i} ON {tabels[0]}.ID = {i}.ID '
+        data = self.client.command(f'SELECT {tabels[0]}.ID, {columns_} FROM {tabels[0]} {joint_};')
+        [data_.append(i) if '\n' not in i else [data_.append(i) for i in i.split('\n')] for i in data]
+
+        return numpy.array(data_).reshape(int(len(data_)/(len(tabels)+1)), len(tabels)+1)
+
+    def data_reconstructer_left(self, tabels):
+        columns_, joint_, data_ = '', '', []
+        for i in tabels:
+            columns_ += f'{i}.{i}, '
+        for i in tabels[1:]:
+            joint_ += f'LEFT JOIN {i} ON {tabels[0]}.ID = {i}.ID '
+        data = self.client.command(f'SELECT {tabels[0]}.ID, {columns_} FROM {tabels[0]} {joint_};')
+        [data_.append(i) if '\n' not in i else [data_.append(i) for i in i.split('\n')] for i in data]
+
+        return numpy.array(data_).reshape(int(len(data_)/(len(tabels)+1)), len(tabels)+1)
+
+    def data_reconstructer_inner(self, tabels):
+        columns_, joint_, data_ = '', '', []
+        for i in tabels:
+            columns_ += f'{i}.{i}, '
+        for i in tabels[1:]:
+            joint_ += f'INNER JOIN {i} ON {tabels[0]}.ID = {i}.ID '
         data = self.client.command(f'SELECT {tabels[0]}.ID, {columns_} FROM {tabels[0]} {joint_};')
         [data_.append(i) if '\n' not in i else [data_.append(i) for i in i.split('\n')] for i in data]
 
@@ -67,6 +90,16 @@ class clickhouse:
                 self.client.command(f'DROP TABLE {i};')
         except:
             pass
+    def column_reader(self, column_name, database_name = 'Sales'):
+        train = {} 
+        train = self.client.command(f'SELECT top 100 {column_name} FROM {database_name}').split('\n')
+        if train[0].isdigit() or '.' in train[0]:
+            train = [float(i) if i!='nan' else 0 for i in train ]
+
+        return train
+        
+    def view_tabels(self):
+        return self.client.command(f'SHOW TABLES;').split('\n')
 
     def column_extracter(self, database_name):
         columns = [i for i in self.client.command(f'DESC {database_name}') if i!='' and i!='String' and i!='Float64']
@@ -84,4 +117,4 @@ for i in data.columns:
     if i!='ID':
         house.table_creater(data[['ID',i]], i)
 
-print(house.data_reconstructer(house.view_tabels()))
+print(house.data_reconstructer_inner(house.view_tabels()))
